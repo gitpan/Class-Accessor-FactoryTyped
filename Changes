@@ -1,5 +1,8 @@
 Revision history for Perl extension Class::Accessor::FactoryTyped
 
+0.02  Mi Okt 24 11:41:27 CEST 2007
+        - now uses Class::Accessor::Installer
+
 0.01  So Okt 21 20:05:00 CEST 2007
         - original version
 

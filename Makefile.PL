@@ -4,6 +4,7 @@ all_from 'lib/Class/Accessor/FactoryTyped.pm';
 perl_version '5.006';
 
 requires 'Class::Accessor';
+requires 'Class::Accessor::Installer';
 requires 'Class::Factory::Enhanced';
 requires 'Data::Miscellany';
 requires 'UNIVERSAL::require';

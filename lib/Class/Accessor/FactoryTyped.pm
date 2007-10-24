@@ -6,11 +6,13 @@ use Carp 'croak';
 use Data::Miscellany 'set_push';
 use UNIVERSAL::require;
 
+our $VERSION = '0.02';
 
-our $VERSION = '0.01';
 
-
-use base 'Class::Accessor::Complex';
+use base qw(
+    Class::Accessor::Complex
+    Class::Accessor::Installer
+);
 
 
 __PACKAGE__->mk_class_array_accessors(
@@ -45,13 +47,12 @@ sub mk_factory_typed_accessors {
             }
 
             for my $meth (@composites) {
-                no strict 'refs';
-                *{"${class}::${meth}"} = sub {
+                $self->install_accessor(name => $meth, code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::{$meth}"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @args) = @_;
                     $self->$name()->$meth(@args);
-                };
+                });
             }
 
             my $expected_class;
@@ -61,8 +62,7 @@ sub mk_factory_typed_accessors {
 
             $self->factory_typed_accessors_push($name);
 
-            no strict 'refs';
-            *{"${class}::${name}"} = sub {
+            $self->install_accessor(name => $name, code => sub {
                 local $DB::sub = local *__ANON__ = "${class}::${name}"
                     if defined &DB::DB && !$Devel::DProf::VERSION;
                 my ($self, @args) = @_;
@@ -101,23 +101,28 @@ sub mk_factory_typed_accessors {
 
                 # Still here? Hm, shouldn't happen, but return the value anyway.
                 $self->{$name};
-            };
+            });
 
 
-            *{"${class}::clear_${name}"} =
-            *{"${class}::${name}_clear"} = sub {
-                local $DB::sub = local *__ANON__ = "${class}::${name}_clear"
-                    if defined &DB::DB && !$Devel::DProf::VERSION;
-                $_[0]->{$name} = undef;
-            };
+            $self->install_accessor(
+                name => [ "clear_${name}", "${name}_clear" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${name}_clear"
+                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                    $_[0]->{$name} = undef;
+                }
+            );
 
 
-            *{"${class}::exists_${name}"} =
-            *{"${class}::${name}_exists"} = sub {
-                local $DB::sub = local *__ANON__ = "${class}::${name}_exists"
-                    if defined &DB::DB && !$Devel::DProf::VERSION;
-                exists $_[0]->{$name};
-            };
+            $self->install_accessor(
+                name => [ "exists_${name}", "${name}_exists" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${name}_exists"
+                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                    exists $_[0]->{$name};
+                }
+            );
         }
     }
 
@@ -141,9 +146,7 @@ sub mk_factory_typed_array_accessors {
         for my $field (@list) {
             my $normalize = "${field}_normalize";
 
-            no strict 'refs';
-
-            *{"${class}::${normalize}"} = sub {
+            $self->install_accessor(name => $normalize, code => sub {
                 local $DB::sub = local *__ANON__ = "${class}::${normalize}"
                     if defined &DB::DB && !$Devel::DProf::VERSION;
                 my $self = shift;
@@ -155,97 +158,122 @@ sub mk_factory_typed_array_accessors {
                 }
                 map { ref $_ eq 'ARRAY' ? @$_ : ($_) }
                 @_;
-            };
+            });
 
             # use a class list to the target package to keep track of which
             # framework_list_objects the class has, for introspection purposes
 
             $self->factory_typed_array_accessors_push($field);
 
-            *{"${class}::${field}"} = sub {
+            $self->install_accessor(name => $field, code => sub {
                 local $DB::sub = local *__ANON__ = "${class}::${field}"
                     if defined &DB::DB && !$Devel::DProf::VERSION;
                 my $self = shift;
                 defined $self->{$field} or $self->{$field} = [];
                 @{$self->{$field}} = $self->$normalize(@_) if @_;
                 wantarray ? @{$self->{$field}} : $self->{$field};
-            };
+            });
 
-            for my $name ("${field}_pop", "pop_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "pop_${field}", "${field}_pop" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${field}_pop"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     pop @{$self->{$field}}
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_set_push", "set_push_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "set_push_${field}", "${field}_set_push" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_set_push"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
                     set_push @{$self->{$field}}, $self->$normalize(@values);
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_push", "push_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "push_${field}", "${field}_push" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${field}_push"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
                     push @{$self->{$field}}, $self->$normalize(@values);
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_shift", "shift_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "shift_${field}", "${field}_shift" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_shift"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     shift @{$self->{$field}}
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_unshift", "unshift_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "unshift_${field}", "${field}_unshift" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_unshift"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
                     unshift @{$self->{$field}}, $self->$normalize(@values);
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_splice", "splice_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "splice_${field}", "${field}_splice" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_splice"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, $offset, $len, @list) = @_;
                     splice(@{$self->{$field}}, $offset, $len, @list);
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_clear", "clear_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "clear_${field}", "${field}_clear" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_clear"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     @{$self->{$field}} = () ;
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_count", "count_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "count_${field}", "${field}_count" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_count"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     exists $self->{$field} ? scalar @{$self->{$field}} : 0;
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_index", "index_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "index_${field}", "${field}_index" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ =
+                        "${class}::${field}_index"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my $self = shift;
                     my (@indices) = @_;
@@ -253,32 +281,36 @@ sub mk_factory_typed_array_accessors {
                     push @Result, $self->{$field}->[$_] for @indices;
                     return $Result[0] if @_ == 1;
                     wantarray ? @Result : \@Result;
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_set", "set_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "set_${field}", "${field}_set" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${field}_set"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my $self = shift;
                     my @args = @_;
-                    croak "$name expects an even number of fields\n"
+                    croak "${field}_set expects an even number of fields\n"
                         if @args % 2;
                     while ( my ($index, $value) = splice @args, 0, 2 ) {
                         $self->{$field}->[$index] = $self->$normalize($value);
                     }
                     return @_ / 2;
-                };
-            }
+                }
+            );
 
-            for my $name ("${field}_ref", "ref_$field") {
-                *{"${class}::${name}"} = sub {
-                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+
+            $self->install_accessor(
+                name => [ "ref_${field}", "${field}_ref" ],
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${field}_ref"
                         if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     $self->{$field};
-                };
-            }
+                }
+            );
         }
     }
 
