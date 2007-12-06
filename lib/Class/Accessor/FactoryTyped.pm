@@ -6,7 +6,7 @@ use Carp 'croak';
 use Data::Miscellany 'set_push';
 use UNIVERSAL::require;
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 
 use base qw(
@@ -47,12 +47,25 @@ sub mk_factory_typed_accessors {
             }
 
             for my $meth (@composites) {
-                $self->install_accessor(name => $meth, code => sub {
-                    local $DB::sub = local *__ANON__ = "${class}::{$meth}"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
-                    my ($self, @args) = @_;
-                    $self->$name()->$meth(@args);
-                });
+                $self->install_accessor(
+                    name => $meth,
+                    code => sub {
+                        local $DB::sub = local *__ANON__ = "${class}::{$meth}"
+                            if defined &DB::DB && !$Devel::DProf::VERSION;
+                        my ($self, @args) = @_;
+                        $self->$name()->$meth(@args);
+                    },
+                    purpose => <<EODOC,
+Calls $meth() with the given arguments on the object stored in the $name slot.
+If there is no such object, a new $type object is constructed - no arguments
+are passed to the constructor - and stored in the $name slot before forwarding
+$meth() onto it.
+EODOC
+                    example => [
+                        "\$obj->$meth(\@args);",
+                        "\$obj->$meth;",
+                    ],
+                );
             }
 
             my $expected_class;
@@ -71,7 +84,7 @@ sub mk_factory_typed_accessors {
                     $expected_class =
                         $factory_class_name->get_registered_class($type);
 
-                    die "no general class name for type [$type]"
+                    die "no factory class name for type [$type]"
                         unless $expected_class;
 
                     # need to load the class to do UNIVERSAL::isa stuff on the
@@ -80,7 +93,8 @@ sub mk_factory_typed_accessors {
                     $expected_class->require or die $@;
                 }
 
-                if (ref $args[0] eq $expected_class) {
+                # if (ref $args[0] eq $expected_class) {
+                if (UNIVERSAL::isa($args[0] , $expected_class)) {
                     return $self->{$name} = $args[0];
 
                 } elsif (@args || !defined $self->{$name}) {
@@ -323,6 +337,8 @@ sub mk_factory_typed_array_accessors {
 
 __END__
 
+
+
 =head1 NAME
 
 Class::Accessor::FactoryTyped - accessors whose values come from a factory
@@ -348,6 +364,9 @@ booleans, sets and more.
 As seen in the synopsis, you can chain calls to the accessor makers. Also,
 because this module inherits from L<Class::Accessor>, you can put a call
 to one of its accessor makers at the end of the chain.
+
+The accessor generators also generate documentation ready to be used with
+L<Pod::Generated>.
 
 =head1 ACCESSORS
 
@@ -478,13 +497,17 @@ TODO: More documentation is needed, but this is an early release.
 If you talk about this module in blogs, on del.icio.us or anywhere else,
 please use the C<classaccessorfactorytyped> tag.
 
+=head1 VERSION 
+                   
+This document describes version 0.03 of L<Class::Accessor::FactoryTyped>.
+
 =head1 BUGS AND LIMITATIONS
 
 No bugs have been reported.
 
 Please report any bugs or feature requests to
-C<bug-class-accessor-factorytyped@rt.cpan.org>, or through the web interface
-at L<http://rt.cpan.org>.
+C<<bug-class-accessor-factorytyped@rt.cpan.org>>, or through the web interface at
+L<http://rt.cpan.org>.
 
 =head1 INSTALLATION
 
@@ -506,6 +529,7 @@ Copyright 2007 by Marcel GrE<uuml>nauer
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
+
 
 =cut
 
