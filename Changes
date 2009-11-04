@@ -1,31 +1,28 @@
----
-global:
-  name: Class-Accessor-FactoryTyped
-releases:
-  - author: 'Marcel Gruenauer <marcel@cpan.org>'
-    changes:
-      - Converted Changes file to YAML style
-      - '.shipit: added Twitter step'
-      - 'Makefile.PL: added auto_install() and process_templates()'
-      - 'lib/*: converted to template'
-      - updated MANIFEST
-      - '.shipit: now uses ApplyYAMLChangeLogVersion'
-      - started writing generated documentation
-      - updated t/perlcriticrc
-      - factory typed attribute accessor now also accepts subclasses of the expected class
-    date: 2007-12-06T22:15:01Z
-    tags:
-      - NEWFEATURE
-    version: 0.03
-  - author: 'Marcel Gruenauer <marcel@cpan.org>'
-    changes:
-      - now uses Class::Accessor::Installer
-    date: 2007-10-24T11:41:27+02:00
-    tags: []
-    version: 0.02
-  - author: 'Marcel Gruenauer <marcel@cpan.org>'
-    changes:
-      - original version
-    date: 2007-10-21T20:05:00+02:00
-    tags: []
-    version: 0.01
+Revision history for Perl extension Class-Accessor-FactoryTyped
+
+0.04  Wed 2009.11.04 23:35:04 CET (Marcel Gruenauer <marcel@cpan.org>)
+     - check whether what we want to check against UNIVERSAL::isa() is actually
+       defined - in real-world scenarios, this saves most of the calls
+     - Changed dist style and Changes back to standard. People didn't like it -
+       the nail that sticks out gets hammered down.
+     - Added standard test files; this will also help with CPANTS.
+
+0.03  Thu, 29 May 2008 12:01:23 -0000 (Marcel Gruenauer <marcel@cpan.org>)
+     - Converted Changes file to YAML style
+     - .shipit: added Twitter step
+     - Makefile.PL: added auto_install() and process_templates()
+     - lib/*: converted to template
+     - updated MANIFEST
+     - .shipit: now uses ApplyYAMLChangeLogVersion
+     - started writing generated documentation
+     - updated t/perlcriticrc
+     - factory typed attribute accessor now also accepts subclasses of the
+       expected class
+     - .shipit: fixed svk.tagpattern
+     - tags: NEWFEATURE
+
+0.02  Wed, 24 Oct 2007 11:41:27 +0200 (Marcel Gruenauer <marcel@cpan.org>)
+     - now uses Class::Accessor::Installer
+
+0.01  Sun, 21 Oct 2007 20:05:00 +0200 (Marcel Gruenauer <marcel@cpan.org>)
+     - original version

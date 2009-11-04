@@ -1,57 +1,50 @@
 package Class::Accessor::FactoryTyped;
-
+use 5.006;
 use warnings;
 use strict;
 use Carp 'croak';
 use Data::Miscellany 'set_push';
 use UNIVERSAL::require;
-
-our $VERSION = '0.03';
-
-
+our $VERSION = '0.04';
 use base qw(
-    Class::Accessor::Complex
-    Class::Accessor::Installer
+  Class::Accessor::Complex
+  Class::Accessor::Installer
 );
-
-
+#<<<
 __PACKAGE__->mk_class_array_accessors(
     qw(factory_typed_accessors factory_typed_array_accessors)
 );
-
+#>>>
 
 sub mk_factory_typed_accessors {
     my ($self, $factory_class_name, @args) = @_;
     my $class = ref $self || $self;
-
     $factory_class_name->require or die $@;
-
     while (@args) {
         my $type = shift @args;
         my $list = shift @args or die "No slot names for $class";
 
         # Allow a list of hashrefs.
-        my @list = ( ref($list) eq 'ARRAY' ) ? @$list : ($list);
-
+        my @list = (ref($list) eq 'ARRAY') ? @$list : ($list);
         for my $obj_def (@list) {
-
             my ($name, @composites);
             my $new_meth = 'new';
-            if ( ! ref $obj_def ) {
+            if (!ref $obj_def) {
                 $name = $obj_def;
             } else {
                 $name = $obj_def->{slot};
                 my $composites = $obj_def->{comp_mthds};
-                @composites = ref($composites) eq 'ARRAY' ? @$composites
-                    : defined $composites ? ($composites) : ();
+                @composites =
+                    ref($composites) eq 'ARRAY' ? @$composites
+                  : defined $composites ? ($composites)
+                  :                       ();
             }
-
             for my $meth (@composites) {
                 $self->install_accessor(
                     name => $meth,
                     code => sub {
                         local $DB::sub = local *__ANON__ = "${class}::{$meth}"
-                            if defined &DB::DB && !$Devel::DProf::VERSION;
+                          if defined &DB::DB && !$Devel::DProf::VERSION;
                         my ($self, @args) = @_;
                         $self->$name()->$meth(@args);
                     },
@@ -61,234 +54,205 @@ If there is no such object, a new $type object is constructed - no arguments
 are passed to the constructor - and stored in the $name slot before forwarding
 $meth() onto it.
 EODOC
-                    example => [
-                        "\$obj->$meth(\@args);",
-                        "\$obj->$meth;",
-                    ],
+                    example => [ "\$obj->$meth(\@args);", "\$obj->$meth;", ],
                 );
             }
-
             my $expected_class;
 
             # use a class list to the target package to keep track of which
             # framework_objects the class has, for introspection purposes
-
             $self->factory_typed_accessors_push($name);
+            $self->install_accessor(
+                name => $name,
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${name}"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
+                    my ($self, @args) = @_;
+                    unless ($expected_class) {
+                        $expected_class =
+                          $factory_class_name->get_registered_class($type);
+                        die "no factory class name for type [$type]"
+                          unless $expected_class;
 
-            $self->install_accessor(name => $name, code => sub {
-                local $DB::sub = local *__ANON__ = "${class}::${name}"
-                    if defined &DB::DB && !$Devel::DProf::VERSION;
-                my ($self, @args) = @_;
+                      # need to load the class to do UNIVERSAL::isa stuff on the
+                      # class name
+                        $expected_class->require or die $@;
+                    }
 
-                unless ($expected_class) {
-                    $expected_class =
-                        $factory_class_name->get_registered_class($type);
+                    # if (ref $args[0] eq $expected_class) {
+                    if (defined($args[0]) && UNIVERSAL::isa($args[0], $expected_class)) {
+                        return $self->{$name} = $args[0];
+                    } elsif (@args || !defined $self->{$name}) {
 
-                    die "no factory class name for type [$type]"
-                        unless $expected_class;
+                      # We accept a hashref of args as well and have to deref it
+                      # first, since we're going to push args onto the @args
+                      # array.
+                        @args =
+                          (scalar(@args == 1) && ref($args[0]) eq 'HASH')
+                          ? %{ $args[0] }
+                          : @args;
 
-                    # need to load the class to do UNIVERSAL::isa stuff on the
-                    # class name
-
-                    $expected_class->require or die $@;
-                }
-
-                # if (ref $args[0] eq $expected_class) {
-                if (UNIVERSAL::isa($args[0] , $expected_class)) {
-                    return $self->{$name} = $args[0];
-
-                } elsif (@args || !defined $self->{$name}) {
-
-                    # We accept a hashref of args as well and have to deref it
-                    # first, since we're going to push args onto the @args
-                    # array.
-
-                    @args = (scalar(@args == 1) && ref($args[0]) eq 'HASH')
-                        ? %{ $args[0] } : @args;
-
-                    # Create an object if args are given, or autovivify one if
-                    # no args are given and it doesn't exist yet.
-
-                    return $self->{$name} = $factory_class_name->
-                        make_object_for_type($type, @args);
-                }
+                      # Create an object if args are given, or autovivify one if
+                      # no args are given and it doesn't exist yet.
+                        return $self->{$name} =
+                          $factory_class_name->make_object_for_type($type,
+                            @args);
+                    }
 
                 # Still here? Hm, shouldn't happen, but return the value anyway.
-                $self->{$name};
-            });
-
-
+                    $self->{$name};
+                }
+            );
             $self->install_accessor(
                 name => [ "clear_${name}", "${name}_clear" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::${name}_clear"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     $_[0]->{$name} = undef;
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "exists_${name}", "${name}_exists" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${name}_exists"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${name}_exists"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     exists $_[0]->{$name};
                 }
             );
         }
     }
-
-    $self;  # for chaining
+    $self;    # for chaining
 }
-
 
 sub mk_factory_typed_array_accessors {
     my ($self, $factory_class_name, @args) = @_;
     my $class = ref $self || $self;
-
     $factory_class_name->require or die $@;
-
     while (@args) {
         my $object_type_const = shift @args;
         my $list = shift @args or die "No slot names for $class";
 
         # Allow a list of hashrefs.
-        my @list = ( ref($list) eq 'ARRAY' ) ? @$list : ($list);
-
+        my @list = (ref($list) eq 'ARRAY') ? @$list : ($list);
         for my $field (@list) {
             my $normalize = "${field}_normalize";
-
-            $self->install_accessor(name => $normalize, code => sub {
-                local $DB::sub = local *__ANON__ = "${class}::${normalize}"
-                    if defined &DB::DB && !$Devel::DProf::VERSION;
-                my $self = shift;
-                map {
-                    ref $_ ? $_ :
-                        $factory_class_name->make_object_for_type(
-                            $object_type_const, $_,
-                        );
+            $self->install_accessor(
+                name => $normalize,
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${normalize}"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
+                    my $self = shift;
+                    map {
+                        ref $_
+                          ? $_
+                          : $factory_class_name->make_object_for_type(
+                            $object_type_const, $_,);
+                      }
+                      map {
+                        ref $_ eq 'ARRAY' ? @$_ : ($_)
+                      } @_;
                 }
-                map { ref $_ eq 'ARRAY' ? @$_ : ($_) }
-                @_;
-            });
+            );
 
             # use a class list to the target package to keep track of which
             # framework_list_objects the class has, for introspection purposes
-
             $self->factory_typed_array_accessors_push($field);
-
-            $self->install_accessor(name => $field, code => sub {
-                local $DB::sub = local *__ANON__ = "${class}::${field}"
-                    if defined &DB::DB && !$Devel::DProf::VERSION;
-                my $self = shift;
-                defined $self->{$field} or $self->{$field} = [];
-                @{$self->{$field}} = $self->$normalize(@_) if @_;
-                wantarray ? @{$self->{$field}} : $self->{$field};
-            });
-
-
+            $self->install_accessor(
+                name => $field,
+                code => sub {
+                    local $DB::sub = local *__ANON__ = "${class}::${field}"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
+                    my $self = shift;
+                    defined $self->{$field} or $self->{$field} = [];
+                    @{ $self->{$field} } = $self->$normalize(@_) if @_;
+                    wantarray ? @{ $self->{$field} } : $self->{$field};
+                }
+            );
             $self->install_accessor(
                 name => [ "pop_${field}", "${field}_pop" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::${field}_pop"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
-                    pop @{$self->{$field}}
+                    pop @{ $self->{$field} };
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "set_push_${field}", "${field}_set_push" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_set_push"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_set_push"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
-                    set_push @{$self->{$field}}, $self->$normalize(@values);
+                    set_push @{ $self->{$field} }, $self->$normalize(@values);
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "push_${field}", "${field}_push" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::${field}_push"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
-                    push @{$self->{$field}}, $self->$normalize(@values);
+                    push @{ $self->{$field} }, $self->$normalize(@values);
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "shift_${field}", "${field}_shift" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_shift"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_shift"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
-                    shift @{$self->{$field}}
+                    shift @{ $self->{$field} };
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "unshift_${field}", "${field}_unshift" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_unshift"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_unshift"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, @values) = @_;
-                    unshift @{$self->{$field}}, $self->$normalize(@values);
+                    unshift @{ $self->{$field} }, $self->$normalize(@values);
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "splice_${field}", "${field}_splice" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_splice"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_splice"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self, $offset, $len, @list) = @_;
-                    splice(@{$self->{$field}}, $offset, $len, @list);
+                    splice(@{ $self->{$field} }, $offset, $len, @list);
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "clear_${field}", "${field}_clear" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_clear"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_clear"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
-                    @{$self->{$field}} = () ;
+                    @{ $self->{$field} } = ();
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "count_${field}", "${field}_count" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_count"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_count"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
-                    exists $self->{$field} ? scalar @{$self->{$field}} : 0;
+                    exists $self->{$field} ? scalar @{ $self->{$field} } : 0;
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "index_${field}", "${field}_index" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ =
-                        "${class}::${field}_index"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      "${class}::${field}_index"
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my $self = shift;
                     my (@indices) = @_;
                     my @Result;
@@ -297,51 +261,40 @@ sub mk_factory_typed_array_accessors {
                     wantarray ? @Result : \@Result;
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "set_${field}", "${field}_set" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::${field}_set"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my $self = shift;
                     my @args = @_;
                     croak "${field}_set expects an even number of fields\n"
-                        if @args % 2;
-                    while ( my ($index, $value) = splice @args, 0, 2 ) {
+                      if @args % 2;
+                    while (my ($index, $value) = splice @args, 0, 2) {
                         $self->{$field}->[$index] = $self->$normalize($value);
                     }
                     return @_ / 2;
                 }
             );
-
-
             $self->install_accessor(
                 name => [ "ref_${field}", "${field}_ref" ],
                 code => sub {
                     local $DB::sub = local *__ANON__ = "${class}::${field}_ref"
-                        if defined &DB::DB && !$Devel::DProf::VERSION;
+                      if defined &DB::DB && !$Devel::DProf::VERSION;
                     my ($self) = @_;
                     $self->{$field};
                 }
             );
         }
     }
-
-    $self;  # for chaining
+    $self;    # for chaining
 }
-
-
 1;
-
-
 __END__
-
-
 
 =head1 NAME
 
-Class::Accessor::FactoryTyped - accessors whose values come from a factory
+Class::Accessor::FactoryTyped - Accessors whose values come from a factory
 
 =head1 SYNOPSIS
 
@@ -415,11 +368,11 @@ See C<baz()> above. The hash should contain the following keys:
 
 =over 4
 
-=item slot
+=item C<slot>
 
 The name of the instance attribute (slot).
 
-=item comp_mthds
+=item C<comp_mthds>
 
 A string or array reference, naming the methods that will be forwarded
 directly to the object in the slot.
@@ -442,16 +395,16 @@ methods are created:
 
 =over 4
 
-=item x
+=item C<x>
 
 A get/set method, see C<*> below.
 
-=item y
+=item C<y>
 
 Forwarded onto the object in slot C<x>, which is auto-created via C<new()> if
 necessary. The C<new()>, if called, is called without arguments.
 
-=item z
+=item C<z>
 
 As for C<y>.
 
@@ -462,7 +415,7 @@ set the value of those objects in slot C<foo>, which will generally contain an
 object of the type the factory, in this case C<My::Factory>, uses for the
 object type C<baz>. Two additional methods are created named C<bar()> and
 C<baz()> which result in a call to the C<bar()> and C<baz()> methods on the
-Baz object stored in slot C<foo>.
+C<Baz> object stored in slot C<foo>.
 
 Apart from the forwarding methods described above, C<mk_object_accessors()>
 creates methods as described below, where C<*> denotes the slot name.
@@ -490,23 +443,13 @@ Like C<mk_factory_typed_accessors()> except creates array accessors with all
 methods like those generated by C<Class::Accessor::Complex>'s
 C<mk_array_accessors()>.
 
-TODO: More documentation is needed, but this is an early release.
-
-=head1 TAGS
-
-If you talk about this module in blogs, on del.icio.us or anywhere else,
-please use the C<classaccessorfactorytyped> tag.
-
-=head1 VERSION 
-                   
-This document describes version 0.03 of L<Class::Accessor::FactoryTyped>.
+More documentation is needed, but this is an early release.
 
 =head1 BUGS AND LIMITATIONS
 
 No bugs have been reported.
 
-Please report any bugs or feature requests to
-C<<bug-class-accessor-factorytyped@rt.cpan.org>>, or through the web interface at
+Please report any bugs or feature requests through the web interface at
 L<http://rt.cpan.org>.
 
 =head1 INSTALLATION
@@ -517,19 +460,17 @@ See perlmodinstall for information and options on installing Perl modules.
 
 The latest version of this module is available from the Comprehensive Perl
 Archive Network (CPAN). Visit <http://www.perl.com/CPAN/> to find a CPAN
-site near you. Or see <http://www.perl.com/CPAN/authors/id/M/MA/MARCEL/>.
+site near you. Or see L<http://search.cpan.org/dist/Class-Accessor-FactoryTyped/>.
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 Marcel GrE<uuml>nauer, C<< <marcel@cpan.org> >>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2007 by Marcel GrE<uuml>nauer
+Copyright 2007-2009 by the authors.
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
-
 =cut
-
