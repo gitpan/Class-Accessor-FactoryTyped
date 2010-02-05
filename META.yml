@@ -31,4 +31,4 @@ resources:
   homepage: http://search.cpan.org/dist/Class-Accessor-FactoryTyped/
   license: http://dev.perl.org/licenses/
   repository: git://github.com/hanekomu/class-accessor-factorytyped.git
-version: 0.04
+version: 0.05

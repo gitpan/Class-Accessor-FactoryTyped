@@ -1,5 +1,8 @@
 Revision history for Perl extension Class-Accessor-FactoryTyped
 
+0.05  Fri 2010.02.05 22:10:05 CET (Marcel Gruenauer <marcel@cpan.org>)
+     - check for defined() instead of ref()
+
 0.04  Wed 2009.11.04 23:35:04 CET (Marcel Gruenauer <marcel@cpan.org>)
      - check whether what we want to check against UNIVERSAL::isa() is actually
        defined - in real-world scenarios, this saves most of the calls

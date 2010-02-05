@@ -5,16 +5,13 @@ use strict;
 use Carp 'croak';
 use Data::Miscellany 'set_push';
 use UNIVERSAL::require;
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 use base qw(
   Class::Accessor::Complex
   Class::Accessor::Installer
 );
-#<<<
 __PACKAGE__->mk_class_array_accessors(
-    qw(factory_typed_accessors factory_typed_array_accessors)
-);
-#>>>
+    qw(factory_typed_accessors factory_typed_array_accessors));
 
 sub mk_factory_typed_accessors {
     my ($self, $factory_class_name, @args) = @_;
@@ -80,7 +77,8 @@ EODOC
                     }
 
                     # if (ref $args[0] eq $expected_class) {
-                    if (defined($args[0]) && UNIVERSAL::isa($args[0], $expected_class)) {
+                    if (defined($args[0])
+                        && UNIVERSAL::isa($args[0], $expected_class)) {
                         return $self->{$name} = $args[0];
                     } elsif (@args || !defined $self->{$name}) {
 
