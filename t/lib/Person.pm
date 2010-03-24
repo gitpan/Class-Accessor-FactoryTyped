@@ -1,4 +1,5 @@
 package Person;
+our $VERSION = '1.100830';
 use warnings;
 use strict;
 use base 'Class::Accessor::FactoryTyped';

@@ -1,5 +1,8 @@
 Revision history for Perl extension Class-Accessor-FactoryTyped
 
+1.100830  2010-03-24 11:03:26 Europe/Vienna
+    - converted the distribution to Dist::Zilla-style
+
 0.05  Fri 2010.02.05 22:10:05 CET (Marcel Gruenauer <marcel@cpan.org>)
      - check for defined() instead of ref()
 
