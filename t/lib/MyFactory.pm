@@ -1,8 +1,8 @@
 package MyFactory;
-our $VERSION = '1.100830';
+our $VERSION = '1.100880';
 use warnings;
 use strict;
-use base 'Class::Factory::Enhanced';
+use parent 'Class::Factory::Enhanced';
 
 # Default mappings
 __PACKAGE__->register_factory_type(

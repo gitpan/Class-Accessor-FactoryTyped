@@ -14,7 +14,7 @@ name: Class-Accessor-FactoryTyped
 provides:
   Class::Accessor::FactoryTyped:
     file: lib/Class/Accessor/FactoryTyped.pm
-    version: 1.100830
+    version: 1.100880
 requires:
   Carp: 0
   Class::Accessor::Complex: 0
@@ -34,4 +34,4 @@ resources:
   bugtracker: http://rt.cpan.org/Public/Dist/Display.html?Name=Class-Accessor-FactoryTyped
   homepage: http://search.cpan.org/dist/Class-Accessor-FactoryTyped/
   repository: http://github.com/hanekomu/Class-Accessor-FactoryTyped
-version: 1.100830
+version: 1.100880

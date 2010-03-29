@@ -3,7 +3,8 @@ use strict;
 use warnings;
 
 package Class::Accessor::FactoryTyped;
-our $VERSION = '1.100830';
+our $VERSION = '1.100880';
+
 # ABSTRACT: Accessors whose values come from a factory
 use Carp 'croak';
 use Data::Miscellany 'set_push';
@@ -27,7 +28,6 @@ sub mk_factory_typed_accessors {
         my @list = (ref($list) eq 'ARRAY') ? @$list : ($list);
         for my $obj_def (@list) {
             my ($name, @composites);
-            my $new_meth = 'new';
             if (!ref $obj_def) {
                 $name = $obj_def;
             } else {
@@ -47,13 +47,16 @@ sub mk_factory_typed_accessors {
                         my ($self, @args) = @_;
                         $self->$name()->$meth(@args);
                     },
+                );
+                $self->document_accessor(
+                    name $meth,
                     purpose => <<EODOC,
 Calls $meth() with the given arguments on the object stored in the $name slot.
 If there is no such object, a new $type object is constructed - no arguments
 are passed to the constructor - and stored in the $name slot before forwarding
 $meth() onto it.
 EODOC
-                    example => [ "\$obj->$meth(\@args);", "\$obj->$meth;", ],
+                    examples => [ "\$obj->$meth(\@args);", "\$obj->$meth;", ],
                 );
             }
             my $expected_class;
@@ -301,7 +304,7 @@ Class::Accessor::FactoryTyped - Accessors whose values come from a factory
 
 =head1 VERSION
 
-version 1.100830
+version 1.100880
 
 =head1 SYNOPSIS
 
