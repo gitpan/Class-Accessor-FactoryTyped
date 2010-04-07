@@ -1,5 +1,4 @@
 package Person::SimpleName;
-our $VERSION = '1.100880';
 use warnings;
 use strict;
 use parent 'Class::Accessor::Complex';

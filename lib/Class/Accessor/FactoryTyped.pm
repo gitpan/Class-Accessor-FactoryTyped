@@ -3,7 +3,9 @@ use strict;
 use warnings;
 
 package Class::Accessor::FactoryTyped;
-our $VERSION = '1.100880';
+BEGIN {
+  $Class::Accessor::FactoryTyped::VERSION = '1.100970';
+}
 
 # ABSTRACT: Accessors whose values come from a factory
 use Carp 'croak';
@@ -49,7 +51,7 @@ sub mk_factory_typed_accessors {
                     },
                 );
                 $self->document_accessor(
-                    name $meth,
+                    name => $meth,
                     purpose => <<EODOC,
 Calls $meth() with the given arguments on the object stored in the $name slot.
 If there is no such object, a new $type object is constructed - no arguments
@@ -304,7 +306,7 @@ Class::Accessor::FactoryTyped - Accessors whose values come from a factory
 
 =head1 VERSION
 
-version 1.100880
+version 1.100970
 
 =head1 SYNOPSIS
 
@@ -329,7 +331,7 @@ because this module inherits from L<Class::Accessor>, you can put a call
 to one of its accessor makers at the end of the chain.
 
 The accessor generators also generate documentation ready to be used with
-L<Pod::Generated>.
+L<Sub::Documentation>.
 
 =head1 METHODS
 

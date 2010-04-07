@@ -1,5 +1,9 @@
 Revision history for Perl extension Class-Accessor-FactoryTyped
 
+1.100970  2010-04-07 16:42:26 Europe/Vienna
+    - pod fix to mention Sub::Documentation
+    - added missing '=>' (it still compiled...)
+
 1.100880  2010-03-29 19:58:20 Europe/Vienna
     - added t/03_array.t
     - use parent instead of use base

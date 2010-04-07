@@ -24,9 +24,9 @@ t/lib/Person/SimpleName.pm
 t/perlcriticrc
 t/release-check-changes.t
 t/release-dist-manifest.t
+t/release-distmeta.t
 t/release-has-version.t
 t/release-kwalitee.t
-t/release-meta-yaml.t
 t/release-minimum-version.t
 t/release-pod-coverage.t
 t/release-pod-spell.t
